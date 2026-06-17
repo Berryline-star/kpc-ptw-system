@@ -1,0 +1,331 @@
+// KPC Digital Permit-to-Work System — data model.
+// Run `npx prisma format && npx prisma validate` after editing this file.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  // Pooled connection — used by the app at runtime (serverless-safe).
+  url = env("DATABASE_URL")
+  // Direct (non-pooled) connection — used only for migrations.
+  directUrl = env("DIRECT_DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------
+
+enum Role {
+  SYSTEM_ADMIN
+  SAFETY_OFFICER
+  DEPOT_MANAGER
+  CONTRACTOR
+  SUPERVISOR
+}
+
+enum PermitType {
+  HOT_WORK
+  COLD_WORK
+  CONFINED_SPACE
+  EXCAVATION
+  WORKING_AT_HEIGHT
+  ELECTRICAL
+}
+
+enum PermitStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
+  ACTIVE
+  EXPIRED
+  CLOSED
+}
+
+enum RiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum RiskAssessmentStatus {
+  PENDING_REVIEW
+  VERIFIED
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ControlMeasureStatus {
+  PENDING_DEPLOYMENT
+  IMPLEMENTED
+}
+
+enum AttachmentCategory {
+  WORK_PLAN_JHA
+  SITE_PHOTO
+  OTHER
+}
+
+enum ActivityType {
+  COMMENT
+  SYSTEM_UPDATE
+  STATUS_CHANGE
+}
+
+enum NotificationType {
+  URGENT
+  SAFETY_ALERT
+  APPROVAL_REQUEST
+  SYSTEM_UPDATE
+}
+
+// Modules shown in the admin "Permissions Matrix" screen.
+enum PermissionModule {
+  WORK_PERMITS
+  SAFETY_ANALYTICS
+  ACCESS_CONTROL
+  ASSET_REGISTRY
+}
+
+// ---------------------------------------------------------------------
+// Identity
+// ---------------------------------------------------------------------
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         Role
+  department   String?
+  phone        String?
+  avatarUrl    String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  permitsCreated        Permit[]              @relation("PermitCreatedBy")
+  permitsSupervising    Permit[]              @relation("PermitSupervisor")
+  approvalSteps         ApprovalStep[]
+  attachments           Attachment[]
+  activityEntries       ActivityEntry[]
+  notifications         Notification[]
+  auditLogs             AuditLog[]
+  passwordResets        PasswordResetToken[]
+  riskAssessmentsSigned RiskAssessment[]
+
+  @@index([role])
+}
+
+// Configurable capability matrix behind the admin "Permissions Matrix"
+// screen. Seeded with sensible defaults per role; admins can edit rows.
+model RolePermission {
+  id         String           @id @default(cuid())
+  role       Role
+  module     PermissionModule
+  canView    Boolean          @default(false)
+  canCreate  Boolean          @default(false)
+  canApprove Boolean          @default(false)
+  canDelete  Boolean          @default(false)
+
+  @@unique([role, module])
+}
+
+// ---------------------------------------------------------------------
+// Permits
+// ---------------------------------------------------------------------
+
+model Permit {
+  id           String       @id @default(cuid())
+  permitNumber String       @unique // e.g. "PTW-2026-089", generated on submit
+  type         PermitType
+  status       PermitStatus @default(DRAFT)
+
+  facilityName     String
+  specificLocation String
+  gpsLat           Float?
+  gpsLng           Float?
+
+  workDescription   String
+  startDate         DateTime
+  endDate           DateTime
+  requiredEquipment String[]
+
+  contractorName     String?
+  contractorIdNumber String?
+  department         String?
+
+  // Denormalized from RiskAssessment.overallLevel for fast dashboard/list
+  // filtering without a join.
+  riskLevel RiskLevel?
+
+  createdById  String
+  createdBy    User    @relation("PermitCreatedBy", fields: [createdById], references: [id])
+  supervisorId String?
+  supervisor   User?   @relation("PermitSupervisor", fields: [supervisorId], references: [id])
+
+  submittedAt DateTime?
+  closedAt    DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  riskAssessment  RiskAssessment?
+  approvalSteps   ApprovalStep[]
+  attachments     Attachment[]
+  activityEntries ActivityEntry[]
+  notifications   Notification[]
+
+  @@index([status])
+  @@index([type])
+  @@index([createdById])
+}
+
+model RiskAssessment {
+  id       String @id @default(cuid())
+  permitId String @unique
+  permit   Permit @relation(fields: [permitId], references: [id], onDelete: Cascade)
+
+  overallScore Int // derived: highest (or average) hazard riskScore
+  overallLevel RiskLevel
+  status       RiskAssessmentStatus @default(PENDING_REVIEW)
+  requiredPPE  String[]
+
+  signedById String?
+  signedBy   User?     @relation(fields: [signedById], references: [id])
+  signedAt   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  hazards         Hazard[]
+  controlMeasures ControlMeasure[]
+}
+
+model Hazard {
+  id               String         @id @default(cuid())
+  riskAssessmentId String
+  riskAssessment   RiskAssessment @relation(fields: [riskAssessmentId], references: [id], onDelete: Cascade)
+
+  description String
+  category    String // e.g. "Fire & Explosion", "Toxic Gas / H2S"
+  likelihood  Int // 1-5, per KPC Safety Manual Rev 4.0
+  severity    Int // 1-5
+  riskScore   Int // likelihood * severity
+  riskLevel   RiskLevel
+
+  createdAt DateTime @default(now())
+}
+
+model ControlMeasure {
+  id               String         @id @default(cuid())
+  riskAssessmentId String
+  riskAssessment   RiskAssessment @relation(fields: [riskAssessmentId], references: [id], onDelete: Cascade)
+
+  description String
+  status      ControlMeasureStatus @default(PENDING_DEPLOYMENT)
+
+  createdAt DateTime @default(now())
+}
+
+// One row per stage in a permit's approval chain (e.g. 1: Safety Officer,
+// 2: Depot Manager). `sequence` enforces ordering.
+model ApprovalStep {
+  id       String @id @default(cuid())
+  permitId String
+  permit   Permit @relation(fields: [permitId], references: [id], onDelete: Cascade)
+
+  sequence     Int
+  requiredRole Role
+  approverId   String?
+  approver     User?          @relation(fields: [approverId], references: [id])
+  status       ApprovalStatus @default(PENDING)
+  comments     String?
+  signedAt     DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@unique([permitId, sequence])
+}
+
+model Attachment {
+  id       String @id @default(cuid())
+  permitId String
+  permit   Permit @relation(fields: [permitId], references: [id], onDelete: Cascade)
+
+  fileName String
+  fileUrl  String
+  fileSize Int
+  mimeType String
+  category AttachmentCategory @default(OTHER)
+
+  uploadedById String
+  uploadedBy   User   @relation(fields: [uploadedById], references: [id])
+
+  createdAt DateTime @default(now())
+}
+
+// Powers the chat-style activity log on the permit detail screen, plus
+// auto-generated system entries on status changes.
+model ActivityEntry {
+  id       String @id @default(cuid())
+  permitId String
+  permit   Permit @relation(fields: [permitId], references: [id], onDelete: Cascade)
+
+  authorId String?
+  author   User?        @relation(fields: [authorId], references: [id])
+  type     ActivityType @default(COMMENT)
+  message  String
+
+  createdAt DateTime @default(now())
+
+  @@index([permitId])
+}
+
+model Notification {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  type    NotificationType
+  title   String
+  message String
+  isRead  Boolean          @default(false)
+
+  relatedPermitId String?
+  relatedPermit   Permit? @relation(fields: [relatedPermitId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, isRead])
+}
+
+// System-wide admin audit trail (role changes, permission overrides,
+// security events) — distinct from the per-permit ActivityEntry log.
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  actor      User?    @relation(fields: [actorId], references: [id])
+  action     String // e.g. "ROLE_ASSIGNED", "PERMISSION_OVERRIDE_APPLIED"
+  targetType String // e.g. "User", "Permit", "RolePermission"
+  targetId   String
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  @@index([targetType, targetId])
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+}
