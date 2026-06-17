@@ -1,4 +1,6 @@
 import type { Config } from "tailwindcss";
+import forms from "@tailwindcss/forms";
+import containerQueries from "@tailwindcss/container-queries";
 
 // Design tokens ported 1:1 from the KPC "Industrial Integrity System"
 // design spec (DESIGN.md, exported from the Stitch mockups).
@@ -141,10 +143,7 @@ const config: Config = {
       },
     },
   },
-  plugins: [
-    require("@tailwindcss/forms"),
-    require("@tailwindcss/container-queries"),
-  ],
+  plugins: [forms, containerQueries],
 };
 
 export default config;

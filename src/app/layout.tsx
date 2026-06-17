@@ -21,15 +21,15 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${inter.variable} h-full`}>
-      {/*
-        Material Symbols is used as the icon font throughout every Stitch
-        screen (e.g. <span class="material-symbols-outlined">). Loaded as a
-        stylesheet since it's an icon font, not a text typeface — the
-        no-page-custom-font rule is a Pages Router-era check and doesn't
-        apply to the App Router's root layout.
-      */}
-      {/* eslint-disable-next-line @next/next/no-page-custom-font */}
       <head>
+        {/*
+          Material Symbols is used as the icon font throughout every Stitch
+          screen (e.g. <span class="material-symbols-outlined">). Loaded as
+          a stylesheet since it's an icon font, not a text typeface — the
+          no-page-custom-font rule is a Pages Router-era check and doesn't
+          apply here.
+        */}
+        {/* eslint-disable-next-line @next/next/no-page-custom-font */}
         <link
           href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
           rel="stylesheet"
