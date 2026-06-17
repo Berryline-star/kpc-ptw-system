@@ -115,15 +115,22 @@ async function main() {
 
   // --- Role/permission matrix --------------------------------------
   for (const role of Object.keys(DEFAULT_PERMISSIONS) as Role[]) {
-    for (const module of Object.keys(
+    for (const permissionModule of Object.keys(
       DEFAULT_PERMISSIONS[role],
     ) as PermissionModule[]) {
       const [canView, canCreate, canApprove, canDelete] =
-        DEFAULT_PERMISSIONS[role][module];
+        DEFAULT_PERMISSIONS[role][permissionModule];
       await prisma.rolePermission.upsert({
-        where: { role_module: { role, module } },
+        where: { role_module: { role, module: permissionModule } },
         update: { canView, canCreate, canApprove, canDelete },
-        create: { role, module, canView, canCreate, canApprove, canDelete },
+        create: {
+          role,
+          module: permissionModule,
+          canView,
+          canCreate,
+          canApprove,
+          canDelete,
+        },
       });
     }
   }

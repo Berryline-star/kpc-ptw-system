@@ -9,55 +9,82 @@ Pipeline Company, built from the "Industrial Integrity System" design
 Next.js 15 (App Router) · TypeScript · Tailwind CSS v3 · PostgreSQL · Prisma
 · Auth.js · React Context API · Vercel
 
-## Status: Phase 1 — Data layer ✅
+## Status: Phase 2 — Auth ✅
 
 What's in this commit:
 
-- Full Prisma schema (`prisma/schema.prisma`): `User`, `RolePermission`,
-  `Permit`, `RiskAssessment`, `Hazard`, `ControlMeasure`, `ApprovalStep`,
-  `Attachment`, `ActivityEntry`, `Notification`, `AuditLog`,
-  `PasswordResetToken` — covering all 6 permit types and 5 roles (System
-  Admin, Safety Officer, Depot Manager, Contractor, Supervisor)
-- Prisma Client singleton at `src/lib/prisma.ts` (hot-reload safe)
-- Seed script (`prisma/seed.ts`) — 5 demo users (one per role, password
-  `Password123!`), 4 demo permits across different statuses, default
-  role/permission matrix
-- Pinned to **Prisma 6.19.3** rather than the newly-released Prisma 7 —
-  v7 requires ESM-only output, mandatory database driver adapters, and a
-  new `prisma.config.ts` config system. None of that buys anything for
-  this project and most existing tutorials/Stack Overflow answers still
-  target v6, so v6 is the more practical choice here.
+- **Auth.js v5** (`next-auth@beta` — still officially beta-tagged even now,
+  but it's the standard App-Router-native way to do this and what the spec
+  asks for) with a Credentials provider checking email/password against
+  the `User` table (bcrypt-compared)
+- Split config: `src/auth.config.ts` (edge-safe — used by `middleware.ts`)
+  vs `src/auth.ts` (Node-only, holds the bcrypt/Prisma-dependent
+  `authorize` logic). Keeps the Edge middleware bundle free of anything
+  that can't run there.
+- `middleware.ts` redirects unauthenticated users away from `/dashboard`
+  and signed-in users away from `/login` — but per current best practice
+  (Next.js middleware has had real bypass vulnerabilities, e.g.
+  CVE-2025-29927) this is treated as a UX layer, not the security
+  boundary: `src/lib/session.ts`'s `requireUser()`/`requireRole()` re-check
+  the session directly in every protected Server Component/Action too.
+- Role + id injected into the JWT/session via callbacks, typed through
+  `src/types/next-auth.d.ts`
+- Login, forgot-password, and reset-password pages — converted from the
+  matching Stitch screens, wired to real server actions
+  (`src/lib/actions/auth.ts`, `src/lib/actions/password-reset.ts`).
+  Password reset issues a real token (`PasswordResetToken` table, 30 min
+  expiry) and logs the reset link to the server console — there's no
+  email provider wired up yet, so this is the placeholder until one is
+  added.
+- `/dashboard` — a bare placeholder that proves the full loop
+  (login → session → protected route → role visible → logout). Gets
+  replaced by the real Operations Dashboard in Phase 4.
 
-### Database setup (Neon — free tier)
+### Previously, Phase 1 — Data layer
 
-1. Go to console.neon.tech, sign up, create a project (pick a region
-   close to your deployment, e.g. AWS Frankfurt for East Africa).
-2. On the project dashboard, copy the **pooled** connection string (the
-   one with `-pooler` in the hostname) into `DATABASE_URL`, and the
-   **direct** connection string (no `-pooler`) into `DIRECT_DATABASE_URL`
-   in your local `.env` (copy `.env.example` to `.env` first — `.env` is
-   git-ignored, so your credentials never get committed).
-3. Run:
-   ```bash
-   npm run db:generate   # generates the Prisma Client
-   npm run db:migrate    # creates tables from the schema (prompts for a migration name)
-   npm run db:seed       # populates demo users + permits
+Full Prisma schema (`prisma/schema.prisma`): `User`, `RolePermission`,
+`Permit`, `RiskAssessment`, `Hazard`, `ControlMeasure`, `ApprovalStep`,
+`Attachment`, `ActivityEntry`, `Notification`, `AuditLog`,
+`PasswordResetToken` — covering all 6 permit types and 5 roles (System
+Admin, Safety Officer, Depot Manager, Contractor, Supervisor). Seed script
+(`prisma/seed.ts`) creates 5 demo users (one per role, password
+`Password123!`) and 4 demo permits. Pinned to **Prisma 6.19.3** rather
+than the newly-released Prisma 7 — v7 requires ESM-only output, mandatory
+database driver adapters, and a new `prisma.config.ts` config system.
+None of that buys anything here, and most existing tutorials/Stack
+Overflow answers still target v6.
+
+### Setup from scratch
+
+1. **Database** — go to console.neon.tech, sign up, create a project.
+   On the dashboard, copy the **pooled** connection string (has
+   `-pooler` in the hostname) into `DATABASE_URL`, and the **direct**
+   string (no `-pooler`) into `DIRECT_DATABASE_URL`. Copy `.env.example`
+   to `.env` first (it's git-ignored, so credentials never get
+   committed).
+2. **Auth secret** — add to the same `.env`:
    ```
-4. Optional: `npm run db:studio` opens a GUI to browse your data.
-
-### Run it
-
-```bash
-npm install
-npm run dev
-```
+   AUTH_SECRET=   # generate with: node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+   ```
+3. **Install + migrate + seed**:
+   ```bash
+   npm install
+   npm run db:generate
+   npm run db:migrate
+   npm run db:seed
+   ```
+4. **Run it**:
+   ```bash
+   npm run dev
+   ```
+   Go to `/login` and sign in with any seeded user, e.g.
+   `safety.officer@kpc.co.ke` / `Password123!`.
 
 ## Roadmap
 
 1. ~~Foundations~~ done
 2. ~~Data layer~~ done
-3. **Auth** — Auth.js Credentials provider, role-aware sessions, route
-   middleware, forgot/reset password
+3. ~~Auth~~ done
 4. **App shell** — sidebar (desktop) / bottom tab bar (mobile), role-aware
    nav
 5. **Operations dashboard** — stat cards, trend chart, risk donut, activity
