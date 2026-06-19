@@ -9,28 +9,29 @@ Pipeline Company, built from the "Industrial Integrity System" design
 Next.js 15 (App Router) · TypeScript · Tailwind CSS v3 · PostgreSQL · Prisma
 · Auth.js · React Context API · Vercel
 
-## Status: Phase 3 — App shell ✅
+## Status: Phase 5 — Operations dashboard ✅
 
 What's in this commit:
 
-- All authenticated pages now live under a shared `(app)` route group
-  (`src/app/(app)/layout.tsx`) that checks the session once and renders
-  the shell around every child page — no more per-page auth boilerplate.
-- **Sidebar** (desktop, `src/components/layout/sidebar.tsx`) and
-  **bottom tab bar** (mobile, `src/components/layout/bottom-nav.tsx`),
-  both driven by one role-aware config (`src/lib/config/nav.ts`) so
-  visibility per role is defined in exactly one place.
-- **Topbar** with search (visual only for now — wires up once Permits
-  exists), notifications bell, and user identity.
-- Refactored `middleware.ts`/`auth.config.ts` to a **public-routes
-  allowlist** instead of enumerating protected routes — every new page
-  added under `(app)` in later phases is automatically protected, no
-  middleware edits needed per route.
-- Stub "Coming in Phase N" pages for Permits, Approvals, Risk
-  Assessments, Reports, Notifications, and Admin — so the nav is fully
-  clickable today instead of 404ing.
-- A real (not stubbed) **Profile** page showing account info + sign out.
-- Homepage now links to `/login` instead of being a dead end.
+- `src/lib/queries/dashboard.ts` — server-side query module computing
+  every dashboard number from real Prisma data: permit counts by status,
+  permit type distribution (donut chart percentages), risk level
+  breakdown, a 7-day creation trend, the 6 most recent activity-log
+  entries, and dynamically generated alerts (e.g. only shows an "expiring
+  soon" alert if a permit is actually expiring within the hour).
+- Stat cards, permit trend bar chart, permit type donut chart, risk
+  category bars, recent activity feed, alerts panel, "Ready to Issue?"
+  quick-action card, and the floating action button — all converted from
+  the Stitch `operations_dashboard` mockup into real components in
+  `src/components/dashboard/`, each taking typed data as props rather
+  than hardcoded values.
+- The donut chart's arc math (`stroke-dasharray`/`stroke-dashoffset`) is
+  computed from real percentages, not copy-pasted from the mockup — it'll
+  correctly redraw itself as your real permit-type mix changes.
+- Verified by rendering the dashboard with realistic mock data in a
+  headless browser at both desktop and mobile widths before shipping —
+  confirmed the bento grid, chart proportions, and FAB placement all hold
+  up against the actual mockup.
 
 ### Setup from scratch
 
@@ -64,8 +65,7 @@ What's in this commit:
 2. ~~Data layer~~ done
 3. ~~Auth~~ done
 4. ~~App shell~~ done
-5. **Operations dashboard** — stat cards, trend chart, risk donut, activity
-   feed
+5. ~~Operations dashboard~~ done
 6. **Permit creation wizard** — 4-step flow (Type/Location, Details/Dates,
    Contractor/Files, Risk Review/Submit)
 7. **Permits directory & detail page** — search/filter/paginate, status

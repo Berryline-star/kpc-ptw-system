@@ -2,6 +2,18 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Thin scrollbar used in the dashboard's scrollable activity feed */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #c2c6d3;
+  border-radius: 10px;
+}
+
 /* Frosted glass card effect — used on login/forgot/reset password screens */
 .glass-panel {
   background: rgba(255, 255, 255, 0.7);
