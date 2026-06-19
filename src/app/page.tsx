@@ -63,6 +63,16 @@ export default function Home() {
             Critical Hazard
           </button>
         </section>
+
+        <a
+          href="/login"
+          className="inline-flex items-center gap-2 text-label-lg text-primary hover:underline"
+        >
+          Go to Login
+          <span className="material-symbols-outlined text-[18px]">
+            arrow_forward
+          </span>
+        </a>
       </div>
     </main>
   );

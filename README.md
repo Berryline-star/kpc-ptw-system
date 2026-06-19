@@ -9,50 +9,28 @@ Pipeline Company, built from the "Industrial Integrity System" design
 Next.js 15 (App Router) · TypeScript · Tailwind CSS v3 · PostgreSQL · Prisma
 · Auth.js · React Context API · Vercel
 
-## Status: Phase 2 — Auth ✅
+## Status: Phase 3 — App shell ✅
 
 What's in this commit:
 
-- **Auth.js v5** (`next-auth@beta` — still officially beta-tagged even now,
-  but it's the standard App-Router-native way to do this and what the spec
-  asks for) with a Credentials provider checking email/password against
-  the `User` table (bcrypt-compared)
-- Split config: `src/auth.config.ts` (edge-safe — used by `middleware.ts`)
-  vs `src/auth.ts` (Node-only, holds the bcrypt/Prisma-dependent
-  `authorize` logic). Keeps the Edge middleware bundle free of anything
-  that can't run there.
-- `middleware.ts` redirects unauthenticated users away from `/dashboard`
-  and signed-in users away from `/login` — but per current best practice
-  (Next.js middleware has had real bypass vulnerabilities, e.g.
-  CVE-2025-29927) this is treated as a UX layer, not the security
-  boundary: `src/lib/session.ts`'s `requireUser()`/`requireRole()` re-check
-  the session directly in every protected Server Component/Action too.
-- Role + id injected into the JWT/session via callbacks, typed through
-  `src/types/next-auth.d.ts`
-- Login, forgot-password, and reset-password pages — converted from the
-  matching Stitch screens, wired to real server actions
-  (`src/lib/actions/auth.ts`, `src/lib/actions/password-reset.ts`).
-  Password reset issues a real token (`PasswordResetToken` table, 30 min
-  expiry) and logs the reset link to the server console — there's no
-  email provider wired up yet, so this is the placeholder until one is
-  added.
-- `/dashboard` — a bare placeholder that proves the full loop
-  (login → session → protected route → role visible → logout). Gets
-  replaced by the real Operations Dashboard in Phase 4.
-
-### Previously, Phase 1 — Data layer
-
-Full Prisma schema (`prisma/schema.prisma`): `User`, `RolePermission`,
-`Permit`, `RiskAssessment`, `Hazard`, `ControlMeasure`, `ApprovalStep`,
-`Attachment`, `ActivityEntry`, `Notification`, `AuditLog`,
-`PasswordResetToken` — covering all 6 permit types and 5 roles (System
-Admin, Safety Officer, Depot Manager, Contractor, Supervisor). Seed script
-(`prisma/seed.ts`) creates 5 demo users (one per role, password
-`Password123!`) and 4 demo permits. Pinned to **Prisma 6.19.3** rather
-than the newly-released Prisma 7 — v7 requires ESM-only output, mandatory
-database driver adapters, and a new `prisma.config.ts` config system.
-None of that buys anything here, and most existing tutorials/Stack
-Overflow answers still target v6.
+- All authenticated pages now live under a shared `(app)` route group
+  (`src/app/(app)/layout.tsx`) that checks the session once and renders
+  the shell around every child page — no more per-page auth boilerplate.
+- **Sidebar** (desktop, `src/components/layout/sidebar.tsx`) and
+  **bottom tab bar** (mobile, `src/components/layout/bottom-nav.tsx`),
+  both driven by one role-aware config (`src/lib/config/nav.ts`) so
+  visibility per role is defined in exactly one place.
+- **Topbar** with search (visual only for now — wires up once Permits
+  exists), notifications bell, and user identity.
+- Refactored `middleware.ts`/`auth.config.ts` to a **public-routes
+  allowlist** instead of enumerating protected routes — every new page
+  added under `(app)` in later phases is automatically protected, no
+  middleware edits needed per route.
+- Stub "Coming in Phase N" pages for Permits, Approvals, Risk
+  Assessments, Reports, Notifications, and Admin — so the nav is fully
+  clickable today instead of 404ing.
+- A real (not stubbed) **Profile** page showing account info + sign out.
+- Homepage now links to `/login` instead of being a dead end.
 
 ### Setup from scratch
 
@@ -85,8 +63,7 @@ Overflow answers still target v6.
 1. ~~Foundations~~ done
 2. ~~Data layer~~ done
 3. ~~Auth~~ done
-4. **App shell** — sidebar (desktop) / bottom tab bar (mobile), role-aware
-   nav
+4. ~~App shell~~ done
 5. **Operations dashboard** — stat cards, trend chart, risk donut, activity
    feed
 6. **Permit creation wizard** — 4-step flow (Type/Location, Details/Dates,
