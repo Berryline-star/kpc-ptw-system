@@ -9,29 +9,43 @@ Pipeline Company, built from the "Industrial Integrity System" design
 Next.js 15 (App Router) · TypeScript · Tailwind CSS v3 · PostgreSQL · Prisma
 · Auth.js · React Context API · Vercel
 
-## Status: Phase 5 — Operations dashboard ✅
+## Status: Phase 6 — Permit creation wizard ✅
 
 What's in this commit:
 
-- `src/lib/queries/dashboard.ts` — server-side query module computing
-  every dashboard number from real Prisma data: permit counts by status,
-  permit type distribution (donut chart percentages), risk level
-  breakdown, a 7-day creation trend, the 6 most recent activity-log
-  entries, and dynamically generated alerts (e.g. only shows an "expiring
-  soon" alert if a permit is actually expiring within the hour).
-- Stat cards, permit trend bar chart, permit type donut chart, risk
-  category bars, recent activity feed, alerts panel, "Ready to Issue?"
-  quick-action card, and the floating action button — all converted from
-  the Stitch `operations_dashboard` mockup into real components in
-  `src/components/dashboard/`, each taking typed data as props rather
-  than hardcoded values.
-- The donut chart's arc math (`stroke-dasharray`/`stroke-dashoffset`) is
-  computed from real percentages, not copy-pasted from the mockup — it'll
-  correctly redraw itself as your real permit-type mix changes.
-- Verified by rendering the dashboard with realistic mock data in a
-  headless browser at both desktop and mobile widths before shipping —
-  confirmed the bento grid, chart proportions, and FAB placement all hold
-  up against the actual mockup.
+- **4-step wizard** (`src/components/permits/wizard/`) converted from
+  the Stitch mockups — Type & Location → Details & Timeline → Contractor
+  & Files → Hazard Assessment & Review. The 4 mockup files used
+  inconsistent step labels; this build standardizes on **Type → Details
+  → Hazards → Review** throughout.
+- State lives in a **React Context** provider (`permit-wizard-context.tsx`,
+  per your stated stack) so data persists across steps without prop
+  drilling, plus per-step **Zod validation** (`src/lib/validation/permit.ts`)
+  that blocks "Next" until that step's fields are valid.
+- The wizard renders as a fixed full-screen overlay above the normal
+  sidebar/topbar shell (matching the mockup's dedicated header), without
+  needing a separate route-group restructure.
+- **Server actions**: `getSupervisorOptions()` populates the Step 3
+  supervisor dropdown from real `User` records; `createPermit()`
+  (`src/lib/actions/permit.ts`) does the real work — atomically creates
+  the `Permit`, its `RiskAssessment` + `Hazard` rows, a 2-stage
+  `ApprovalStep` chain (Safety Officer → Depot Manager), and an initial
+  `ActivityEntry`, then redirects to the new permit's detail page.
+- A minimal **permit detail page** at `/permits/[id]` now exists so the
+  post-submit redirect has somewhere real to land — shows the actual
+  saved data (summary, risk assessment, approval chain). Gets replaced
+  by the full mockup-matched detail page in Phase 7.
+- **Known scope cut, called out deliberately**: Step 3's file upload UI
+  is fully functional for local selection/preview/removal, but files
+  aren't persisted to storage yet — that needs real file storage
+  infrastructure (S3/Vercel Blob/etc.), which is Phase 7 work. Submitting
+  a permit today saves everything except attached files.
+- Verified by rendering all 4 steps with realistic data in a headless
+  browser before shipping — caught and fixed one real bug in the process
+  (the supervisor-lookup server action was using the redirect-throwing
+  `requireUser()` inside a background `useEffect` call, which would have
+  yanked users to `/login` if their session expired mid-wizard instead of
+  failing gracefully).
 
 ### Setup from scratch
 
@@ -66,10 +80,9 @@ What's in this commit:
 3. ~~Auth~~ done
 4. ~~App shell~~ done
 5. ~~Operations dashboard~~ done
-6. **Permit creation wizard** — 4-step flow (Type/Location, Details/Dates,
-   Contractor/Files, Risk Review/Submit)
+6. ~~Permit creation wizard~~ done
 7. **Permits directory & detail page** — search/filter/paginate, status
-   timeline, QR code, attachments, comment thread
+   timeline, QR code, attachments (real file storage), comment thread
 8. **Approval workflow** — approval queue, signature capture, approve/reject
 9. **Risk assessment module** — 5x5 likelihood/severity matrix, hazard
    scoring, control measures
