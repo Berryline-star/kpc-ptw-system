@@ -225,10 +225,21 @@ export default async function PermitDetailPage({
         {/* Hazard Assessment */}
         {permit.riskAssessment && permit.riskAssessment.hazards.length > 0 && (
           <section className="space-y-4">
-            <h2 className="flex items-center gap-2 text-label-lg font-bold text-primary">
-              <span className="material-symbols-outlined">warning</span>
-              HAZARD ASSESSMENT
-            </h2>
+            <div className="flex items-center justify-between">
+              <h2 className="flex items-center gap-2 text-label-lg font-bold text-primary">
+                <span className="material-symbols-outlined">warning</span>
+                HAZARD ASSESSMENT
+              </h2>
+              <Link
+                href={`/risk-assessments/${permit.id}`}
+                className="flex items-center gap-1 text-label-sm font-bold text-primary hover:underline"
+              >
+                Full Risk Assessment
+                <span className="material-symbols-outlined text-[16px]">
+                  arrow_forward
+                </span>
+              </Link>
+            </div>
             <div className="scrollbar-hide flex gap-3 overflow-x-auto">
               {permit.riskAssessment.hazards.map((hazard: Hazard) => (
                 <div

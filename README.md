@@ -9,7 +9,41 @@ Pipeline Company, built from the "Industrial Integrity System" design
 Next.js 15 (App Router) · TypeScript · Tailwind CSS v3 · PostgreSQL · Prisma
 · Auth.js · React Context API · Vercel
 
-## Status: Phase 8 — Approval workflow ✅
+## Status: Phase 9 — Risk assessment module ✅
+
+What's in this commit:
+
+- **5x5 industrial risk matrix** (`src/components/risk-assessment/risk-matrix-grid.tsx`)
+  — reproduces KPC's exact likelihood x severity grid from the mockup
+  (`src/lib/config/risk-matrix.ts`). This is a real industrial-standard
+  matrix template, not a naive likelihood x severity product — severity
+  is weighted more heavily than likelihood, matching the mockup's exact
+  cell-by-cell pattern (reverse-engineered from the 25 individual mockup
+  cells rather than guessed). A pulsing marker shows the
+  highest-scoring hazard's actual position on the grid.
+- **Interactive hazard scoring** (`/risk-assessments/[permitId]`) — click
+  a hazard row, pick a Likelihood or Severity tab, tap a score (1-5,
+  each with KPC Safety Manual-style descriptions like "3 - Occasional /
+  Monthly frequency"), and the risk score, badge, matrix marker, and the
+  assessment's overall rating all recompute and persist for real via
+  `updateHazardScore()`.
+- **Control measures checklist** — click to toggle Implemented / Pending
+  Deployment, persisted via `toggleControlMeasure()`.
+- **Sign & Submit** — `signRiskAssessment()` marks the assessment
+  `VERIFIED`, locks further edits, and logs an activity entry that shows
+  up automatically in the permit's comment thread.
+- **Role-gated editing**: System Admin, Safety Officer, and Depot
+  Manager can score/toggle/sign; everyone else (e.g. Contractor) gets a
+  clean read-only view. Once signed, the assessment becomes read-only
+  for everyone — matching the "Verified" lock implied by the mockup.
+- A **risk assessments list** (`/risk-assessments`) and a link from the
+  permit detail page's hazard section ("Full Risk Assessment →") tie
+  this into the rest of the app.
+- Verified by rendering the full interactive page (matrix, scoring tabs,
+  checklist) with realistic data and clicking through the tab/scoring
+  interactions in a headless browser before shipping.
+
+### Setup from scratch
 
 What's in this commit:
 
@@ -120,8 +154,7 @@ message), but everything else in the app functions normally either way.
 6. ~~Permit creation wizard~~ done
 7. ~~Permits directory & detail page~~ done
 8. ~~Approval workflow~~ done
-9. **Risk assessment module** — 5x5 likelihood/severity matrix, hazard
-   scoring, control measures
+9. ~~Risk assessment module~~ done
 10. **QR verification** — scanner + valid/invalid result screen
 11. **Notifications, reporting/analytics, admin** (user management,
     role/permissions matrix, audit logs)
