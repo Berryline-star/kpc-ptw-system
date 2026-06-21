@@ -9,7 +9,39 @@ Pipeline Company, built from the "Industrial Integrity System" design
 Next.js 15 (App Router) · TypeScript · Tailwind CSS v3 · PostgreSQL · Prisma
 · Auth.js · React Context API · Vercel
 
-## Status: Phase 7 — Permits directory & detail page ✅
+## Status: Phase 8 — Approval workflow ✅
+
+What's in this commit:
+
+- **Approval queue** (`/approvals`) — shows permits genuinely waiting on
+  the signed-in user's role specifically, not just any pending permit.
+  Enforces approval-chain order: a Depot Manager never sees a permit the
+  Safety Officer hasn't approved yet, even though both are "pending"
+  permits in the database.
+- **Approval action page** (`/approvals/[stepId]`) — converted from the
+  Stitch mockup: permit summary, risk assessment with hazard/PPE tags, a
+  live approval-timeline showing who's approved and when, a review-notes
+  textarea, a click-to-sign digital signature pad (cursive name reveal,
+  matching the mockup's interaction), and Approve/Reject actions.
+- **Server actions** (`src/lib/actions/approvals.ts`) — `approvePermitStep()`
+  and `rejectPermitStep()` both re-check authorization and sequence order
+  server-side (not just trusting the queue query), so a direct action
+  call can't skip ahead or action a step that isn't actually assigned to
+  that role. Approving the *final* step in the chain promotes the whole
+  permit to `APPROVED`; rejecting at any step immediately sets the permit
+  to `REJECTED`. Both log an `ActivityEntry` so the permit detail page's
+  comment thread shows the approval/rejection automatically.
+- Rejecting requires a reason (minimum 5 characters); approving requires
+  the signature pad to be "signed" first — both enforced both client-side
+  (for instant feedback) and server-side (the actual rule).
+- A genuine type-safety improvement worth noting: the first version of
+  the authorization helper returned a loosely-typed object that TypeScript
+  couldn't reliably narrow, which silently produced an invalid-looking
+  error type. Rewrote it as a proper discriminated union keyed on a
+  `success: boolean` field — a cleaner pattern than what earlier phases
+  used, worth carrying forward into later server actions too.
+
+### Setup from scratch
 
 What's in this commit:
 
@@ -87,7 +119,7 @@ message), but everything else in the app functions normally either way.
 5. ~~Operations dashboard~~ done
 6. ~~Permit creation wizard~~ done
 7. ~~Permits directory & detail page~~ done
-8. **Approval workflow** — approval queue, signature capture, approve/reject
+8. ~~Approval workflow~~ done
 9. **Risk assessment module** — 5x5 likelihood/severity matrix, hazard
    scoring, control measures
 10. **QR verification** — scanner + valid/invalid result screen

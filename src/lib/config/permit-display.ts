@@ -37,3 +37,15 @@ export const PERMIT_TYPE_TAG_STYLES: Record<PermitType, string> = {
   WORKING_AT_HEIGHT: "bg-tertiary-fixed text-on-tertiary-fixed-variant",
   ELECTRICAL: "bg-secondary-fixed text-on-secondary-fixed",
 };
+
+export const RISK_LEVEL_LABELS = {
+  LOW: "Low Risk",
+  MEDIUM: "Medium Risk",
+  HIGH: "High Risk",
+} as const;
+
+export const RISK_LEVEL_STYLES = {
+  LOW: "bg-green-100 text-green-800 border-green-200",
+  MEDIUM: "bg-secondary-fixed-dim text-on-secondary-fixed-variant border-secondary/20",
+  HIGH: "bg-error-container text-on-error-container border-error/20",
+} as const;
