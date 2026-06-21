@@ -18,7 +18,6 @@ export function Step3ContractorFiles() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [supervisors, setSupervisors] = useState<SupervisorOption[]>([]);
   const [loadingSupervisors, setLoadingSupervisors] = useState(true);
-  const [files, setFiles] = useState<File[]>([]);
 
   useEffect(() => {
     getSupervisorOptions()
@@ -28,12 +27,12 @@ export function Step3ContractorFiles() {
 
   function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     if (e.target.files) {
-      setFiles((prev) => [...prev, ...Array.from(e.target.files ?? [])]);
+      updateData({ files: [...data.files, ...Array.from(e.target.files)] });
     }
   }
 
   function removeFile(index: number) {
-    setFiles((prev) => prev.filter((_, i) => i !== index));
+    updateData({ files: data.files.filter((_, i) => i !== index) });
   }
 
   function handleNext() {
@@ -182,9 +181,9 @@ export function Step3ContractorFiles() {
               />
             </label>
 
-            {files.length > 0 && (
+            {data.files.length > 0 && (
               <div className="mt-4 space-y-2">
-                {files.map((file, i) => (
+                {data.files.map((file, i) => (
                   <div
                     key={`${file.name}-${i}`}
                     className="flex items-center justify-between rounded-lg border border-outline-variant bg-surface-container-high p-3"
@@ -215,8 +214,8 @@ export function Step3ContractorFiles() {
                   </div>
                 ))}
                 <p className="px-1 text-label-sm text-on-surface-variant">
-                  Files are attached locally for this submission. Permanent
-                  document storage lands in a later phase.
+                  Files will upload once you submit the permit on the final
+                  step.
                 </p>
               </div>
             )}

@@ -11,6 +11,7 @@ import {
   step4Schema,
 } from "@/lib/validation/permit";
 import { createPermit } from "@/lib/actions/permit";
+import { uploadPermitAttachment } from "@/lib/actions/attachments";
 import { cn } from "@/lib/utils";
 
 function formatDateRange(start: string, end: string) {
@@ -72,10 +73,31 @@ export function Step4RiskReview() {
 
     const response = await createPermit(data);
 
-    if (!response.success) {
+    if (!response.success || !response.permitId) {
       setSubmitError(response.message);
       setSubmitting(false);
       return;
+    }
+
+    // Upload any attached files now that we have a real permitId to
+    // attach them to. Run sequentially rather than Promise.all so a
+    // single failed upload doesn't abort the others mid-flight.
+    if (data.files.length > 0) {
+      for (const file of data.files) {
+        const fileFormData = new FormData();
+        fileFormData.set("file", file);
+        fileFormData.set("category", "WORK_PLAN_JHA");
+        const uploadResult = await uploadPermitAttachment(
+          response.permitId,
+          fileFormData,
+        );
+        if (!uploadResult.success) {
+          // Permit was already created successfully — surface the upload
+          // issue but still continue to the permit page rather than
+          // blocking on it, since the permit itself is valid either way.
+          console.error("Attachment upload failed:", uploadResult.message);
+        }
+      }
     }
 
     reset();

@@ -24,6 +24,7 @@ export interface PermitWizardState {
   contractorName: string;
   contractorIdNumber: string;
   supervisorId: string;
+  files: File[];
   // Step 4
   selectedHazards: string[];
   selectedPPE: string[];
@@ -43,6 +44,7 @@ const initialState: PermitWizardState = {
   contractorName: "",
   contractorIdNumber: "",
   supervisorId: "",
+  files: [],
   selectedHazards: [],
   selectedPPE: [],
   declarationAccepted: false,

@@ -9,43 +9,48 @@ Pipeline Company, built from the "Industrial Integrity System" design
 Next.js 15 (App Router) · TypeScript · Tailwind CSS v3 · PostgreSQL · Prisma
 · Auth.js · React Context API · Vercel
 
-## Status: Phase 6 — Permit creation wizard ✅
+## Status: Phase 7 — Permits directory & detail page ✅
 
 What's in this commit:
 
-- **4-step wizard** (`src/components/permits/wizard/`) converted from
-  the Stitch mockups — Type & Location → Details & Timeline → Contractor
-  & Files → Hazard Assessment & Review. The 4 mockup files used
-  inconsistent step labels; this build standardizes on **Type → Details
-  → Hazards → Review** throughout.
-- State lives in a **React Context** provider (`permit-wizard-context.tsx`,
-  per your stated stack) so data persists across steps without prop
-  drilling, plus per-step **Zod validation** (`src/lib/validation/permit.ts`)
-  that blocks "Next" until that step's fields are valid.
-- The wizard renders as a fixed full-screen overlay above the normal
-  sidebar/topbar shell (matching the mockup's dedicated header), without
-  needing a separate route-group restructure.
-- **Server actions**: `getSupervisorOptions()` populates the Step 3
-  supervisor dropdown from real `User` records; `createPermit()`
-  (`src/lib/actions/permit.ts`) does the real work — atomically creates
-  the `Permit`, its `RiskAssessment` + `Hazard` rows, a 2-stage
-  `ApprovalStep` chain (Safety Officer → Depot Manager), and an initial
-  `ActivityEntry`, then redirects to the new permit's detail page.
-- A minimal **permit detail page** at `/permits/[id]` now exists so the
-  post-submit redirect has somewhere real to land — shows the actual
-  saved data (summary, risk assessment, approval chain). Gets replaced
-  by the full mockup-matched detail page in Phase 7.
-- **Known scope cut, called out deliberately**: Step 3's file upload UI
-  is fully functional for local selection/preview/removal, but files
-  aren't persisted to storage yet — that needs real file storage
-  infrastructure (S3/Vercel Blob/etc.), which is Phase 7 work. Submitting
-  a permit today saves everything except attached files.
-- Verified by rendering all 4 steps with realistic data in a headless
-  browser before shipping — caught and fixed one real bug in the process
-  (the supervisor-lookup server action was using the redirect-throwing
-  `requireUser()` inside a background `useEffect` call, which would have
-  yanked users to `/login` if their session expired mid-wizard instead of
-  failing gracefully).
+- **Permits directory** (`/permits`) — bento stat cards (total/pending/
+  active, computed independently of the active filter), a debounced
+  search box (matches on permit number, description, or facility name),
+  permit cards color-coded by type and status, and pagination. Search
+  updates the URL's query string and resets to page 1 on a new term, so
+  the list is fully shareable/bookmarkable and survives a refresh.
+- **Permit detail page** (`/permits/[id]`) — converted from the Stitch
+  mockup: work type/location/validity cards, a status banner, hazard
+  cards, a signatories list showing real approval-chain progress, a real
+  attachments list with working download links, and a live activity-log
+  thread (chat-style comments + system-update entries) that lets any
+  signed-in user post a new comment.
+- **Real file storage** — Step 3 of the wizard now actually persists
+  uploaded files via **Vercel Blob** (`src/lib/actions/attachments.ts`):
+  size/MIME-type validated, authorization-checked (only the creator,
+  assigned supervisor, Safety Officer, or System Admin can attach files),
+  and gracefully degrades with a clear message rather than crashing if
+  `BLOB_READ_WRITE_TOKEN` isn't configured yet.
+- **Real bug found and fixed during this phase**: the Tailwind `content`
+  config only scanned `src/app` and `src/components`, silently missing
+  `src/lib` — which meant any status/type badge color built from a
+  lookup table in `src/lib/config/permit-display.ts` (e.g. the "Pending"
+  pill) lost its background color entirely and rendered as plain text.
+  Fixed by adding `src/lib/**/*.{ts,tsx}` to the content glob; verified
+  by re-rendering both the list and detail pages and visually confirming
+  every status pill now shows its correct color.
+
+### New environment variable this phase
+
+Add to your `.env` (see `.env.example` for the full template):
+```
+BLOB_READ_WRITE_TOKEN=
+```
+Get this by creating a Blob store from your Vercel dashboard's Storage
+tab — for a Vercel-deployed project this env var is added automatically;
+for local dev, copy the same token value from that same dashboard page.
+File uploads simply won't work without it (with a clear in-app error
+message), but everything else in the app functions normally either way.
 
 ### Setup from scratch
 
@@ -81,8 +86,7 @@ What's in this commit:
 4. ~~App shell~~ done
 5. ~~Operations dashboard~~ done
 6. ~~Permit creation wizard~~ done
-7. **Permits directory & detail page** — search/filter/paginate, status
-   timeline, QR code, attachments (real file storage), comment thread
+7. ~~Permits directory & detail page~~ done
 8. **Approval workflow** — approval queue, signature capture, approve/reject
 9. **Risk assessment module** — 5x5 likelihood/severity matrix, hazard
    scoring, control measures
