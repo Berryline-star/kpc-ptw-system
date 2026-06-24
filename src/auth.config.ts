@@ -9,6 +9,7 @@ import type { NextAuthConfig } from "next-auth";
  * which routes require a session, and what goes into the JWT/session.
  */
 const PUBLIC_ROUTES = ["/", "/login", "/forgot-password", "/reset-password"];
+const PUBLIC_ROUTE_PREFIXES = ["/verify/"];
 
 export const authConfig = {
   pages: {
@@ -21,7 +22,9 @@ export const authConfig = {
     authorized({ auth, request }) {
       const isLoggedIn = !!auth?.user;
       const { pathname } = request.nextUrl;
-      const isPublicRoute = PUBLIC_ROUTES.includes(pathname);
+      const isPublicRoute =
+        PUBLIC_ROUTES.includes(pathname) ||
+        PUBLIC_ROUTE_PREFIXES.some((prefix) => pathname.startsWith(prefix));
 
       if (pathname === "/login" && isLoggedIn) {
         return Response.redirect(new URL("/dashboard", request.nextUrl));

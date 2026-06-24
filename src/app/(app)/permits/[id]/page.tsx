@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getPermitDetail } from "@/lib/queries/permit-detail";
 import { requireUser } from "@/lib/session";
 import { ActivityLogThread } from "@/components/permits/activity-log-thread";
+import { QrVerificationPanel } from "@/components/permits/qr-verification-panel";
 import {
   PERMIT_TYPE_LABELS,
   PERMIT_STATUS_LABELS,
@@ -115,7 +116,7 @@ export default async function PermitDetailPage({
           </div>
         </section>
 
-        {/* Status banner (replaces QR panel until Phase 9 verification module) */}
+        {/* Status banner */}
         <section
           className={`flex items-center gap-3 rounded-xl border-l-4 p-stack-md ${
             PERMIT_STATUS_STYLES[permit.status]
@@ -126,11 +127,11 @@ export default async function PermitDetailPage({
             <p className="text-label-lg font-bold">
               Status: {PERMIT_STATUS_LABELS[permit.status]}
             </p>
-            <p className="text-body-sm opacity-90">
-              QR verification arrives in a later phase.
-            </p>
           </div>
         </section>
+
+        {/* QR Verification */}
+        <QrVerificationPanel verificationToken={permit.verificationToken} />
 
         {/* Permit Progress */}
         <section className="space-y-4">

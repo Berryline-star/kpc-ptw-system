@@ -9,7 +9,48 @@ Pipeline Company, built from the "Industrial Integrity System" design
 Next.js 15 (App Router) · TypeScript · Tailwind CSS v3 · PostgreSQL · Prisma
 · Auth.js · React Context API · Vercel
 
-## Status: Phase 9 — Risk assessment module ✅
+## Status: Phase 10 — QR verification ✅
+
+What's in this commit:
+
+- **`verificationToken` field added to the Permit schema** — a separate
+  `@unique @default(cuid())` field deliberately distinct from the primary
+  `id`. Encoding the primary key in a publicly-shared QR code would let
+  anyone who photographs a printed permit probe or guess other permits'
+  internal records; a separate token can also be rotated independently if
+  a printed permit is ever compromised.
+  **Action required on your end:** run `npm run db:migrate` with a name
+  like `add-verification-token` to apply this schema change. Prisma
+  will auto-populate the field with a unique token for every existing
+  permit row.
+- **Public verification page** (`/verify/[token]`) — no auth required,
+  so field inspectors scanning a QR code on a physical permit sign don't
+  need to be logged in. Shows a large green "VALID" / red "Not Active"
+  hero block (matching the Stitch mockup exactly), plus permit number,
+  work category, facility, and the top-risk hazard summary. Correctly
+  distinguishes between "approved but outside the scheduled window" (not
+  valid) and "approved and currently within the scheduled window" (valid)
+  — just checking `status === "APPROVED"` alone isn't sufficient.
+- **QR panel on permit detail page** — click to reveal a live QR code
+  (generated client-side by `qrcode.react`) encoding the verification
+  URL. Tap to toggle the QR display on/off.
+- **In-app scanner** (`/scanner`) — camera-based QR scanner using
+  `@yudiel/react-qr-scanner` (built on the native Barcode Detection API,
+  no heavy WASM dependency). Parses both a full URL and a bare token,
+  so it handles real QR scans and manual code entry alike. Falls back
+  gracefully with a camera-error message if permissions are denied.
+- Added `Scanner` to the primary nav so it's reachable from the sidebar.
+
+### ⚠ Migration required this phase
+
+```bash
+npm run db:migrate
+```
+When prompted, enter a migration name like `add-verification-token`.
+This adds the `verificationToken` field to every existing permit row
+automatically (Prisma's `@default(cuid())` handles the backfill).
+
+### Setup from scratch
 
 What's in this commit:
 
@@ -155,7 +196,7 @@ message), but everything else in the app functions normally either way.
 7. ~~Permits directory & detail page~~ done
 8. ~~Approval workflow~~ done
 9. ~~Risk assessment module~~ done
-10. **QR verification** — scanner + valid/invalid result screen
+10. ~~QR verification~~ done
 11. **Notifications, reporting/analytics, admin** (user management,
     role/permissions matrix, audit logs)
 12. **Deployment** — hosted Postgres, env vars, Vercel production deploy

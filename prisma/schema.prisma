@@ -147,6 +147,14 @@ model Permit {
   type         PermitType
   status       PermitStatus @default(DRAFT)
 
+  // Separate from `id` deliberately: this is the value encoded in the
+  // permit's QR code and exposed on the *public*, unauthenticated
+  // verification page. Keeping it distinct from the primary key means a
+  // leaked/photographed QR code can't be used to probe or guess other
+  // permits' internal IDs, and it can be rotated independently if a
+  // printed permit is ever compromised.
+  verificationToken String @unique @default(cuid())
+
   facilityName     String
   specificLocation String
   gpsLat           Float?

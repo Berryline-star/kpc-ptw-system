@@ -55,6 +55,12 @@ export const PRIMARY_NAV: NavItem[] = [
     allowedRoles: ["SYSTEM_ADMIN", "SAFETY_OFFICER", "DEPOT_MANAGER", "SUPERVISOR"],
   },
   {
+    label: "Scanner",
+    href: "/scanner",
+    icon: "qr_code_scanner",
+    allowedRoles: ALL_ROLES,
+  },
+  {
     label: "Notifications",
     href: "/notifications",
     icon: "notifications",
