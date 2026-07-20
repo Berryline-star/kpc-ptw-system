@@ -1,11 +1,5 @@
-import { ComingSoon } from "@/components/layout/coming-soon";
+import { redirect } from "next/navigation";
 
-export default function AdminPage() {
-  return (
-    <ComingSoon
-      title="Administration"
-      phase="Phase 10"
-      icon="admin_panel_settings"
-    />
-  );
+export default function AdminIndexPage() {
+  redirect("/admin/users");
 }

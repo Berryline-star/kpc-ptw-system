@@ -55,6 +55,20 @@ export const PRIMARY_NAV: NavItem[] = [
     allowedRoles: ["SYSTEM_ADMIN", "SAFETY_OFFICER", "DEPOT_MANAGER", "SUPERVISOR"],
   },
   {
+    // Static list here just mirrors the *default* seeded
+    // RolePermission rows for ASSET_REGISTRY.canView, same as every
+    // other nav item's allowedRoles — it's a UI hint to avoid showing a
+    // dead link, not the real gate. If an admin changes who can view
+    // Assets via /admin/roles, the nav won't reflect that automatically
+    // (would need dynamic per-request nav filtering to fix properly),
+    // but /assets itself always checks the live RolePermission table via
+    // hasPermission(), which is the actual enforcement.
+    label: "Assets",
+    href: "/assets",
+    icon: "precision_manufacturing",
+    allowedRoles: ["SYSTEM_ADMIN", "SAFETY_OFFICER", "DEPOT_MANAGER", "SUPERVISOR"],
+  },
+  {
     label: "Scanner",
     href: "/scanner",
     icon: "qr_code_scanner",

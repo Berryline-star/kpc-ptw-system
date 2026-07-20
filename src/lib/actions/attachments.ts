@@ -3,6 +3,8 @@
 import { put } from "@vercel/blob";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
+import { verifyFileSignature } from "@/lib/file-signature";
+import { checkRateLimit } from "@/lib/rate-limit";
 import type { AttachmentCategory } from "@prisma/client";
 
 const MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024; // 25MB, matches the wizard's stated limit
@@ -26,6 +28,17 @@ export async function uploadPermitAttachment(
 ): Promise<UploadResult> {
   const user = await requireUser();
 
+  const rateLimit = await checkRateLimit(`upload:${user.id}`, {
+    max: 20,
+    windowMs: 60 * 60 * 1000,
+  });
+  if (!rateLimit.allowed) {
+    return {
+      success: false,
+      message: "Too many uploads recently — please wait a bit before trying again.",
+    };
+  }
+
   const file = formData.get("file") as File | null;
   const category =
     (formData.get("category") as AttachmentCategory) || "OTHER";
@@ -40,6 +53,20 @@ export async function uploadPermitAttachment(
     return {
       success: false,
       message: "Only PDF, DOCX, JPG, or PNG files are accepted.",
+    };
+  }
+
+  // file.type is client-supplied (read from the extension in the
+  // browser) and trivially spoofed — a renamed .exe can claim to be a
+  // PDF. This checks the file's actual bytes match what it claims to
+  // be, so the MIME allowlist above can't be bypassed just by renaming
+  // a file before upload.
+  const signatureValid = await verifyFileSignature(file, file.type);
+  if (!signatureValid) {
+    return {
+      success: false,
+      message:
+        "This file's content doesn't match its file type — it may be corrupted or misnamed.",
     };
   }
 

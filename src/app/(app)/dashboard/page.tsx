@@ -10,9 +10,10 @@ import {
   QuickIssueCard,
 } from "@/components/dashboard/alerts-panel";
 import { CreatePermitFab } from "@/components/dashboard/create-permit-fab";
+import { isDemoAccount } from "@/lib/demo";
 
 export default async function DashboardPage() {
-  await requireUser();
+  const user = await requireUser();
   const data = await getDashboardData();
   const permitTypeTotal = data.permitTypeDistribution.reduce(
     (sum, slice) => sum + slice.count,
@@ -47,7 +48,7 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      <CreatePermitFab />
+      <CreatePermitFab isDemo={isDemoAccount(user.email)} />
     </div>
   );
 }

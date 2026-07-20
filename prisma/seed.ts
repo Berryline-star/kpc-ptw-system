@@ -44,9 +44,31 @@ const DEFAULT_PERMISSIONS: Record<
 async function main() {
   console.log("Seeding...");
 
-  const passwordHash = await bcrypt.hash("Password123!", 10);
+  // Refuses to run with the well-known default password in production —
+  // a seed script hardcoding "Password123!" across 6 accounts is fine
+  // for local dev, but leaving it reachable in a real deployment is
+  // exactly how systems get broken into. Set SEED_PASSWORD to something
+  // real (and different per environment) to override; local dev without
+  // it set still works exactly as before, just with a loud reminder.
+  const seedPassword = process.env.SEED_PASSWORD;
+  if (!seedPassword && process.env.NODE_ENV === "production") {
+    throw new Error(
+      "Refusing to seed with the default dev password in production. " +
+        "Set the SEED_PASSWORD environment variable to a real, unique " +
+        "password before running this in a production environment.",
+    );
+  }
+  if (!seedPassword) {
+    console.warn(
+      "⚠️  Using the default dev password (Password123!) for all seeded " +
+        "accounts — fine for local dev, but rotate every one of these " +
+        "before this database is anything but local/staging.",
+    );
+  }
 
-  const [admin, safetyOfficer, depotManager, contractor, supervisor] =
+  const passwordHash = await bcrypt.hash(seedPassword ?? "Password123!", 10);
+
+  const [admin, safetyOfficer, depotManager, contractor, supervisor, demo] =
     await Promise.all([
       prisma.user.upsert({
         where: { email: "admin@kpc.co.ke" },
@@ -103,6 +125,24 @@ async function main() {
           department: "Pump Station 27",
         },
       }),
+      // Dedicated account for the public "Launch Demo" button — kept
+      // separate from the real Contractor persona (John Njenga) so demo
+      // visitors don't land in an account that reads like it belongs to
+      // a specific real person, and so demo activity is identifiable
+      // and easy to clean out later (e.g. `DELETE FROM "Permit" WHERE
+      // "createdById" = '<this user's id>'`) without touching real
+      // seeded data.
+      prisma.user.upsert({
+        where: { email: "demo@kpc.co.ke" },
+        update: {},
+        create: {
+          name: "Demo Account",
+          email: "demo@kpc.co.ke",
+          passwordHash,
+          role: Role.CONTRACTOR,
+          department: "Public Demo Sandbox",
+        },
+      }),
     ]);
 
   console.log("Users seeded:", {
@@ -111,6 +151,7 @@ async function main() {
     depotManager: depotManager.email,
     contractor: contractor.email,
     supervisor: supervisor.email,
+    demo: demo.email,
   });
 
   // --- Role/permission matrix --------------------------------------

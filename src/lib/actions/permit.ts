@@ -2,24 +2,22 @@
 
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
+import { notifyUsersWithRole } from "@/lib/notifications";
+import { isDemoAccount } from "@/lib/demo";
+import { defaultHazardRiskLevel } from "@/lib/risk";
+import { checkRateLimit } from "@/lib/rate-limit";
 import {
   createPermitSchema,
   HAZARD_OPTIONS,
   PPE_OPTIONS,
 } from "@/lib/validation/permit";
 import type { PermitWizardState } from "@/components/permits/wizard/permit-wizard-context";
-import type { PermitType, RiskLevel } from "@prisma/client";
+import type { PermitType } from "@prisma/client";
 
 interface CreatePermitResult {
   success: boolean;
   message: string;
   permitId?: string;
-}
-
-function riskLevelFromScore(score: number): RiskLevel {
-  if (score >= 15) return "HIGH";
-  if (score >= 8) return "MEDIUM";
-  return "LOW";
 }
 
 async function generatePermitNumber(): Promise<string> {
@@ -35,6 +33,26 @@ export async function createPermit(
   data: PermitWizardState,
 ): Promise<CreatePermitResult> {
   const user = await requireUser();
+
+  if (isDemoAccount(user.email)) {
+    return {
+      success: false,
+      message:
+        "The demo account can't submit real permits — create an account to try this for real.",
+    };
+  }
+
+  const rateLimit = await checkRateLimit(`create-permit:${user.id}`, {
+    max: 10,
+    windowMs: 60 * 60 * 1000,
+  });
+  if (!rateLimit.allowed) {
+    return {
+      success: false,
+      message:
+        "You've submitted a lot of permits recently — please wait a bit before submitting another.",
+    };
+  }
 
   const parsed = createPermitSchema.safeParse(data);
   if (!parsed.success) {
@@ -68,10 +86,16 @@ export async function createPermit(
     likelihood: 3,
     severity: 3,
     riskScore: 9,
-    riskLevel: riskLevelFromScore(9),
+    riskLevel: defaultHazardRiskLevel(3, 3),
   }));
   const overallScore = Math.max(...hazardRecords.map((h) => h.riskScore));
-  const overallLevel = riskLevelFromScore(overallScore);
+  // Every hazard here uses the same flat placeholder (3x3), so they all
+  // land on the same matrix cell — "worst of all hazards" and "any one
+  // hazard's level" are the same value in this specific case. That
+  // stops being true once real per-hazard scoring exists (see
+  // recalculateOverallRisk in risk-assessment.ts, which does take the
+  // worst level across genuinely different hazards).
+  const overallLevel = defaultHazardRiskLevel(3, 3);
 
   const supervisor = await prisma.user.findUnique({
     where: { id: values.supervisorId },
@@ -131,6 +155,17 @@ export async function createPermit(
       },
       select: { id: true, permitNumber: true },
     });
+
+    // Best-effort: a failure here shouldn't roll back an otherwise
+    // successful permit submission, so it's intentionally outside the
+    // create() above rather than in the same transaction.
+    const notifications = await notifyUsersWithRole("SAFETY_OFFICER", {
+      type: "APPROVAL_REQUEST",
+      title: "New permit awaiting approval",
+      message: `Permit #${permit.permitNumber} was submitted by ${user.name ?? user.email} and needs Safety Officer review.`,
+      relatedPermitId: permit.id,
+    });
+    await Promise.all(notifications);
 
     return {
       success: true,

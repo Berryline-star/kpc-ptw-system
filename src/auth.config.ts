@@ -8,7 +8,16 @@ import type { NextAuthConfig } from "next-auth";
  * server components. This file holds everything middleware needs:
  * which routes require a session, and what goes into the JWT/session.
  */
-const PUBLIC_ROUTES = ["/", "/login", "/forgot-password", "/reset-password"];
+const PUBLIC_ROUTES = [
+  "/",
+  "/login",
+  "/forgot-password",
+  "/reset-password",
+  "/register",
+  "/demo",
+  "/privacy",
+  "/terms",
+];
 const PUBLIC_ROUTE_PREFIXES = ["/verify/"];
 
 export const authConfig = {

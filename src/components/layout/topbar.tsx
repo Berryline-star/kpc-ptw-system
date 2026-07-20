@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { TopbarSearch } from "@/components/layout/topbar-search";
 
 function formatRole(role: string) {
   return role
@@ -10,36 +11,36 @@ function formatRole(role: string) {
 export function Topbar({
   name,
   role,
+  unreadCount = 0,
 }: {
   name: string;
   role: string;
+  unreadCount?: number;
 }) {
   return (
     <header className="flex items-center gap-stack-md border-b border-outline-variant bg-surface-container-lowest px-margin-mobile py-stack-sm md:px-margin-desktop">
-      {/* Search — visual placeholder for now, wired up once Permits exists */}
-      <div className="hidden flex-1 items-center gap-2 rounded-lg border border-outline-variant bg-surface-container-low px-4 py-2 md:flex md:max-w-md">
-        <span className="material-symbols-outlined text-[20px] text-outline">
-          search
-        </span>
-        <input
-          type="search"
-          placeholder="Search permits, assets, or personnel..."
-          className="w-full bg-transparent text-body-sm text-on-surface placeholder:text-outline focus:outline-none"
-          disabled
-        />
-      </div>
+      <TopbarSearch />
 
       <div className="flex-1 md:hidden" />
 
       <div className="flex items-center gap-stack-sm">
         <Link
           href="/notifications"
-          className="flex h-10 w-10 items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-surface-container"
-          aria-label="Notifications"
+          className="relative flex h-10 w-10 items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-surface-container"
+          aria-label={
+            unreadCount > 0
+              ? `Notifications (${unreadCount} unread)`
+              : "Notifications"
+          }
         >
           <span className="material-symbols-outlined text-[22px]">
             notifications
           </span>
+          {unreadCount > 0 && (
+            <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-secondary px-1 text-[10px] font-bold leading-none text-on-secondary">
+              {unreadCount > 9 ? "9+" : unreadCount}
+            </span>
+          )}
         </Link>
 
         <div className="hidden items-center gap-3 border-l border-outline-variant pl-stack-sm md:flex">
