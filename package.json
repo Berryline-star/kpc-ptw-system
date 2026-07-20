@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",
+    "@sentry/nextjs": "^10.66.0",
     "@vercel/blob": "^2.4.1",
     "@yudiel/react-qr-scanner": "^2.6.0",
     "bcryptjs": "^3.0.3",
@@ -30,7 +31,6 @@
     "react-dom": "^19.2.7",
     "tailwind-merge": "^3.6.0",
     "zod": "^4.4.3"
-
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.5",
@@ -49,6 +49,5 @@
     "tsx": "^4.22.4",
     "typescript": "^5",
     "vitest": "^4.1.10"
-
   }
 }
